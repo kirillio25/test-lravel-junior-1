@@ -25,3 +25,8 @@
 6. ```bash
    composer install
    ```
+
+   
+7. ```bash
+   php artisan schedule:work
+   ```
