@@ -1,42 +1,37 @@
 <?php
+
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-use App\Models\Setting;
+use App\Http\Requests\SettingRequest;
+use App\Services\SettingService;
 
 class SettingController extends Controller
 {
+    private $settingService;
+
+    public function __construct(SettingService $settingService)
+    {
+        $this->settingService = $settingService;
+    }
+
     public function edit()
     {
-        $url = Setting::get('google_sheet_url', '');
-        $id  = Setting::get('google_sheet_id', '');
-        return view('settings.edit', compact('url', 'id'));
+        $settings = $this->settingService->getGoogleSheetSettings();
+        return view('settings.edit', [
+            'url' => $settings['url'],
+            'id'  => $settings['id'],
+        ]);
     }
 
-    public function update(Request $request)
+    public function update(SettingRequest $request)
     {
-        $data = $request->validate([
-            'google_sheet_url' => 'required|url'
-        ]);
+        $updated = $this->settingService->updateGoogleSheetUrl($request->validated()['google_sheet_url']);
 
-        $url = $data['google_sheet_url'];
-        $id = $this->extractSheetId($url);
-
-        if (!$id) {
-            return redirect()->back()->withErrors(['google_sheet_url' => 'Не удалось извлечь ID из URL. Убедитесь, что ссылка выглядит как https://docs.google.com/spreadsheets/d/<ID>/...']);
+        if (!$updated) {
+            return redirect()->back()
+                ->withErrors(['google_sheet_url' => 'Не удалось извлечь ID из URL. Убедитесь, что ссылка выглядит как https://docs.google.com/spreadsheets/d/<ID>/...']);
         }
-
-        Setting::set('google_sheet_url', $url);
-        Setting::set('google_sheet_id', $id);
 
         return redirect()->route('settings.edit')->with('success', 'Google Sheet сохранён');
-    }
-
-    private function extractSheetId(string $url): ?string
-    {
-        if (preg_match('/\/d\/([a-zA-Z0-9-_]+)/', $url, $m)) {
-            return $m[1];
-        }
-        return null;
     }
 }
